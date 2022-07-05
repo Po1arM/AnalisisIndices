@@ -1,0 +1,91 @@
+use('indices_db');
+
+//Consultas con indice
+//db.facturas.createIndex({fechaFactura:1},{name:"FechaFacturaIndex"})
+const a = [
+    {$match:{
+        fechaFactura:{
+            $gte: ISODate("2020-01-01"),
+            $lte: ISODate("2020-05-01")
+        }
+    }},
+    {$project: {
+      _id: 0,
+      ciudadFactura: "$ciudadFactura",
+      fechaFactura: "$fechaFactura",
+      codigoCliente: "$codigoCliente",
+      totalFactura:"$totalFactura"
+    }},
+    {$sort: {
+      ciudadFactura: -1,
+      fechaFactura: -1
+    }}]
+
+//db.facturas.createIndex({codigoCliente:1},{name:"codigoClienteIndex"})
+
+const b = [
+    {$match:{
+        codigoCliente:{
+            $in :["1001","1002","1003","1004"]
+        },
+        fechaFactura:{
+            $gte: ISODate("2020-05-01"),
+            $lte: ISODate("2021-08-31")
+        }
+    }},
+    {$unwind: "$articulos"},
+    {$project:{
+        ciudadFactura: "$ciudadFactura",
+        codigoProducto:"$articulos.codigoProducto",
+        importe:"$articulos.importe" 
+    }},
+    {$group: {
+      _id: {
+        ciudadFactura:"$ciudadFactura",
+        codigoProducto:"$codigoProducto",
+      },
+      montoTotalProducto: {$sum: "$importe"}
+    }},
+    {$project:{
+        _id:0,
+        ciudadFactura: "$_id.ciudadFactura",
+        codigoProducto:"$_id.codigoProducto",
+        importe:"$montoTotalProducto" 
+    }}]
+
+//db.facturas.createIndex({ciudadFactura:1,ciudadDespacho:1},{name:"ciudadIndex"})
+
+const c = [
+    {$match: {
+        ciudadFactura: "LA VEGA",
+        ciudadDespacho: "SANTIAGO"
+    }},
+    {$project: {
+        _id: 0,
+        codigoFactura: 1,
+        codigoCliente: 1,
+        ciudadFactura: 1,
+        ciudadDespacho: 1
+    }}]
+
+//db.facturas.createIndex({codigoCliente:1,sucursal:1},{name:"clienteSucursalIndex"})
+
+const d = [
+    {$group: {
+      _id: {
+        codigoCliente: "$codigoCliente",
+        nombreCliente: "$nombreCliente",
+        sucursal: "$sucursal"
+      },
+      total: {$sum: "$totalFactura"}
+    }},
+    {$project: {
+        _id: 0,
+        codigoCliente: "$_id.codigoCliente",
+        nombreCliente: "$_id.nombreCliente",
+        sucursal: "$_id.sucursal",
+        ventaTotal:"$total"
+    }},
+    {$sort: {codigoCliente: 1}}]
+
+db.facturas.aggregate(d).explain('executionStats')
